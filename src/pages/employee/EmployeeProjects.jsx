@@ -51,21 +51,33 @@ export default function EmployeeProjects() {
 
   const onRequestSubmit = async (data) => {
     try {
-      const assigned = Array.isArray(data.requestedTeam) ? data.requestedTeam : [data.requestedTeam].filter(Boolean);
-      await addDocument('projectRequests', {
+      let assigned = Array.isArray(data.requestedTeam) ? data.requestedTeam : [data.requestedTeam].filter(Boolean);
+      
+      // Auto-assign the employee who is creating it if they aren't in the list
+      if (!assigned.includes(currentUser.uid)) {
+        assigned.push(currentUser.uid);
+      }
+
+      await addDocument('projects', {
         name: data.name,
-        description: data.description,
-        reason: data.reason,
-        requestedTeam: assigned,
-        status: 'Pending',
-        requestedBy: currentUser.uid,
-        requestedByName: currentUser.displayName || 'Employee'
+        client: data.client || 'Internal',
+        description: data.description || '',
+        startDate: data.startDate,
+        deadline: data.deadline,
+        status: 'Planning',
+        completionPercentage: 0,
+        assignedEmployees: assigned,
+        createdBy: currentUser.uid,
+        updatedAt: new Date().toISOString()
       });
-      toast.success("Project request submitted successfully");
+      
+      toast.success("Project created successfully");
       setIsRequestModalOpen(false);
       reqReset();
+      window.location.reload(); // Refresh to show new project
     } catch (error) {
-      toast.error("Failed to submit request");
+      console.error(error);
+      toast.error("Failed to create project");
     }
   };
 
@@ -106,7 +118,7 @@ export default function EmployeeProjects() {
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl shadow-sm flex items-center gap-2 font-medium transition-colors"
         >
           <Plus className="w-5 h-5" />
-          Request Project
+          Create Project
         </button>
       </div>
 
@@ -205,7 +217,7 @@ export default function EmployeeProjects() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
             <div className="border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">Request New Project</h2>
+              <h2 className="text-xl font-bold text-gray-900">Create New Project</h2>
               <button onClick={() => setIsRequestModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 rounded-full">
                 <X className="w-5 h-5" />
               </button>
@@ -216,15 +228,25 @@ export default function EmployeeProjects() {
                 <input {...reqRegister("name", { required: true })} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Client (Optional)</label>
+                <input {...reqRegister("client")} placeholder="e.g. Acme Corp" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
                 <textarea {...reqRegister("description")} rows={2} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Reason for Request <span className="text-red-500">*</span></label>
-                <textarea {...reqRegister("reason", { required: true })} rows={2} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date <span className="text-red-500">*</span></label>
+                  <input type="date" {...reqRegister("startDate", { required: true })} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Deadline <span className="text-red-500">*</span></label>
+                  <input type="date" {...reqRegister("deadline", { required: true })} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Requested Team</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Assign Team Members</label>
                 <div className="border border-gray-300 rounded-xl max-h-40 overflow-y-auto bg-gray-50 p-2 space-y-1">
                   {employees.map(emp => (
                     <label key={emp.id} className="flex items-center gap-3 p-2 bg-white hover:bg-blue-50 rounded-lg cursor-pointer transition-colors border border-gray-100 shadow-sm">
@@ -238,11 +260,11 @@ export default function EmployeeProjects() {
                     </label>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-2">Select the employees you want to request for this project.</p>
+                <p className="text-xs text-gray-500 mt-2">Select the team members for this project. You will be automatically assigned.</p>
               </div>
               <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
                 <button type="button" onClick={() => setIsRequestModalOpen(false)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium">Submit Request</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium">Create Project</button>
               </div>
             </form>
           </div>
