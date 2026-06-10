@@ -39,7 +39,10 @@ export default function TaskManagement() {
         // Fetch Employees
         const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
         const empSnap = await getDocs(empQ);
-        setEmployees(empSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setEmployees(empSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(emp => !emp.isDeleted && emp.isActive !== false)
+        );
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Failed to load data");

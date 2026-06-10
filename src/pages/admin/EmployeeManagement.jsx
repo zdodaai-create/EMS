@@ -52,10 +52,37 @@ export default function EmployeeManagement() {
   const confirmDelete = async () => {
     try {
       await softDeleteDocument('users', employeeToDelete);
-      toast.success("Employee deleted successfully");
+      
+      // Cascade delete: Remove employee from all projects they were assigned to
+      const projectsRef = collection(db, 'projects');
+      const qProj = query(projectsRef, where('assignedEmployees', 'array-contains', employeeToDelete));
+      const projSnap = await getDocs(qProj);
+      
+      const updatePromises = projSnap.docs.map(docSnap => {
+        const projData = docSnap.data();
+        const updatedEmployees = (projData.assignedEmployees || []).filter(id => id !== employeeToDelete);
+        return updateDoc(doc(db, 'projects', docSnap.id), { assignedEmployees: updatedEmployees });
+      });
+
+      // Cascade delete: Unassign employee from all their tasks
+      const tasksRef = collection(db, 'tasks');
+      const qTasks = query(tasksRef, where('assignedEmployeeId', '==', employeeToDelete));
+      const tasksSnap = await getDocs(qTasks);
+      
+      tasksSnap.docs.forEach(docSnap => {
+        updatePromises.push(updateDoc(doc(db, 'tasks', docSnap.id), { 
+          assignedEmployeeId: '',
+          assignedEmployeeName: 'Unassigned'
+        }));
+      });
+
+      // Execute all updates
+      await Promise.all(updatePromises);
+
+      toast.success("Employee removed completely from all projects and tasks");
       setEmployees(employees.filter(emp => emp.id !== employeeToDelete));
     } catch (error) {
-      toast.error("Failed to delete employee");
+      toast.error("Failed to fully delete employee");
       console.error(error);
     } finally {
       setDeleteModalOpen(false);
@@ -67,7 +94,22 @@ export default function EmployeeManagement() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Employee Management</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-gray-900">Employee Management</h1>
+        <button
+          onClick={() => {
+            const registerLink = `${window.location.origin}/register`;
+            navigator.clipboard.writeText(registerLink);
+            toast.success('Registration link copied to clipboard!');
+          }}
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm text-sm font-medium whitespace-nowrap w-full sm:w-auto"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+          </svg>
+          Invite Employee
+        </button>
+      </div>
 
       {employees.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">

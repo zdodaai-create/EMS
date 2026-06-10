@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase/config';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { Folder, Users, Plus, Edit2, X } from 'lucide-react';
+import { Folder, Users, Plus, Edit2, X, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { addDocument, updateDocument } from '../../utils/dbUtils';
@@ -35,7 +35,10 @@ export default function EmployeeProjects() {
         // Fetch all employees for request form
         const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
         const empSnap = await getDocs(empQ);
-        setEmployees(empSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setEmployees(empSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(emp => !emp.isDeleted && emp.isActive !== false)
+        );
       } catch (error) {
         console.error("Error fetching projects:", error);
         toast.error("Failed to load projects");
@@ -167,7 +170,18 @@ export default function EmployeeProjects() {
                   </span>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-100">
+                <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
+                  <button 
+                    onClick={() => {
+                      const statusLink = `${window.location.origin}/status/${project.id}`;
+                      navigator.clipboard.writeText(statusLink);
+                      toast.success('Client status link copied!');
+                    }}
+                    className="flex items-center justify-center p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors"
+                    title="Copy Client Link"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </button>
                   <button 
                     onClick={() => {
                       setSelectedProject(project);
@@ -175,7 +189,7 @@ export default function EmployeeProjects() {
                       updSetValue('latestUpdate', project.latestUpdate || '');
                       setIsUpdateModalOpen(true);
                     }}
-                    className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
                   >
                     <Edit2 className="w-4 h-4" /> Update Progress
                   </button>
@@ -211,9 +225,20 @@ export default function EmployeeProjects() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Requested Team</label>
-                <select multiple {...reqRegister("requestedTeam")} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 h-24">
-                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-                </select>
+                <div className="border border-gray-300 rounded-xl max-h-40 overflow-y-auto bg-gray-50 p-2 space-y-1">
+                  {employees.map(emp => (
+                    <label key={emp.id} className="flex items-center gap-3 p-2 bg-white hover:bg-blue-50 rounded-lg cursor-pointer transition-colors border border-gray-100 shadow-sm">
+                      <input 
+                        type="checkbox" 
+                        value={emp.id}
+                        {...reqRegister("requestedTeam")}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm font-medium text-gray-900 truncate">{emp.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Select the employees you want to request for this project.</p>
               </div>
               <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
                 <button type="button" onClick={() => setIsRequestModalOpen(false)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium">Cancel</button>

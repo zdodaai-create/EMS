@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { db } from '../../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
-import { Plus, Edit2, Trash2, X, Folder, Users } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Folder, Users, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { addDocument, updateDocument, softDeleteDocument } from '../../utils/dbUtils';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
@@ -32,7 +32,10 @@ export default function ProjectManagement() {
         // Fetch Employees
         const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
         const empSnap = await getDocs(empQ);
-        setEmployees(empSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setEmployees(empSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(emp => !emp.isDeleted && emp.isActive !== false)
+        );
 
         // Fetch Clients
         const clientsSnap = await getDocs(collection(db, 'clients'));
@@ -198,6 +201,17 @@ export default function ProjectManagement() {
 
               <div className="flex gap-2 pt-4 border-t border-gray-100">
                 <button 
+                  onClick={() => {
+                    const statusLink = `${window.location.origin}/status/${project.id}`;
+                    navigator.clipboard.writeText(statusLink);
+                    toast.success('Client status link copied!');
+                  }}
+                  className="flex items-center justify-center p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors"
+                  title="Copy Client Link"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+                <button 
                   onClick={() => openEditModal(project)}
                   className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-colors"
                 >
@@ -206,6 +220,7 @@ export default function ProjectManagement() {
                 <button 
                   onClick={() => handleDeleteClick(project.id)}
                   className="flex items-center justify-center p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-colors"
+                  title="Delete Project"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -311,16 +326,23 @@ export default function ProjectManagement() {
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Assign Employees</label>
-                  <select
-                    multiple
-                    {...register("assignedEmployees")}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white h-32"
-                  >
+                  <div className="border border-gray-300 rounded-xl max-h-48 overflow-y-auto bg-gray-50 p-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.name} ({emp.department})</option>
+                      <label key={emp.id} className="flex items-center gap-3 p-3 bg-white hover:bg-blue-50 rounded-lg cursor-pointer transition-colors border border-gray-100 shadow-sm">
+                        <input 
+                          type="checkbox" 
+                          value={emp.id}
+                          {...register("assignedEmployees")}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{emp.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{emp.department}</p>
+                        </div>
+                      </label>
                     ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-2">Hold Ctrl (Windows) or Cmd (Mac) to select multiple</p>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">Select the team members for this project.</p>
                 </div>
               </div>
 

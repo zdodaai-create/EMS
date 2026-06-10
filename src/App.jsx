@@ -6,6 +6,7 @@ import Chat from './components/Chat';
 // Auth Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
+import PublicProjectStatus from './pages/PublicProjectStatus';
 
 // Employee Pages
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
@@ -30,6 +31,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/status/:projectId" element={<PublicProjectStatus />} />
         <Route path="/" element={<Navigate to="/login" />} />
 
         {/* Protected Employee Routes */}
